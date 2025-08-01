@@ -38,7 +38,7 @@ selected_match = st.selectbox("Search and select a match:", matches_df['match_la
 
 # Form for input
 with st.form("input_form"):
-    performance = st.slider("Team performance rating", 1, 10)
+    performance = st.slider("Team performance rating (your subjective rating)", 1, 10)
     # New: Attendance fields
     total_attendance = st.number_input("Total attendance", min_value=0, step=1)
     away_attendance = st.number_input("Away attendance", min_value=0, step=1)
@@ -60,6 +60,7 @@ with st.form("input_form"):
     oafc_usedsub3 = st.text_input("Latics Used substitute 3")
     oafc_usedsub4 = st.text_input("Latics Used substitute 4")
     oafc_usedsub5 = st.text_input("Latics Used substitute 5")
+    oafc_unusedsubs = st.text_input("Latics Unused subs (list all if possible)")
     oafc_scorer1 = st.text_input("Latics goalscorer 1")
     oafc_goaltime1 = st.text_input("Latics goal time 1")
     oafc_scorer2 = st.text_input("Latics goalscorer 2")
@@ -68,6 +69,18 @@ with st.form("input_form"):
     oafc_goaltime3 = st.text_input("Latics goal time 3")
     oafc_scorer4 = st.text_input("Latics goalscorer 4")
     oafc_goaltime4 = st.text_input("Latics goal time 4")
+    oafc_scorer5 = st.text_input("Latics goalscorer 5")
+    oafc_goaltime5 = st.text_input("Latics goal time 5")
+    oafc_scorer6 = st.text_input("Latics goalscorer 6")
+    oafc_goaltime6 = st.text_input("Latics goal time 6")
+    oafc_scorer7 = st.text_input("Latics goalscorer 7")
+    oafc_goaltime7 = st.text_input("Latics goal time 7")
+    oafc_scorer8 = st.text_input("Latics goalscorer 8")
+    oafc_goaltime8 = st.text_input("Latics goal time 8")
+    oafc_scorer9 = st.text_input("Latics goalscorer 9")
+    oafc_goaltime9 = st.text_input("Latics goal time 9")
+    oafc_scorer10 = st.text_input("Latics goalscorer 10")
+    oafc_goaltime10 = st.text_input("Latics goal time 10")
     oafc_scorer5 = st.text_input("Latics goalscorer 5")
     oafc_goaltime5 = st.text_input("Latics goal time 5")
     
@@ -121,6 +134,7 @@ with st.form("input_form"):
             oafc_usedsub3,
             oafc_usedsub4,
             oafc_usedsub5,
+            oafc_unusedsubs,
             oafc_scorer1,
             oafc_goaltime1,
             oafc_scorer2,
@@ -131,6 +145,18 @@ with st.form("input_form"):
             oafc_goaltime4,
             oafc_scorer5,
             oafc_goaltime5,
+            oafc_scorer6,
+            oafc_goaltime6,
+            oafc_scorer7,
+            oafc_goaltime7,
+            oafc_scorer8,
+            oafc_goaltime8,
+            oafc_scorer9,
+            oafc_goaltime9,
+            oafc_scorer10,
+            oafc_goaltime10,
+            oafc_scorer11,
+            oafc_goaltime11,
             notes,
             author
         ]
