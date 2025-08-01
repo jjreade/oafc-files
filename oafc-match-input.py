@@ -37,7 +37,7 @@ All contributions will help build a detailed archive of Oldham Athletic's matche
 matches_df = pd.read_csv("oafc-all-history-1907-08-on.csv")  # assume columns like: match_id, date, team_home, team_away
 
 # Load your player names from CSV
-player_df = pd.read_csv("player_names.csv")  # Replace with actual filename
+player_df = pd.read_csv("oafc-player-names-1989-on.csv")  # Replace with actual filename
 player_names = sorted(player_df["player_name"].dropna().unique())
 
 # Custom function: allow autocomplete-like dropdown with fallback
