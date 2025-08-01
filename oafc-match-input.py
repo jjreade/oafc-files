@@ -38,7 +38,7 @@ matches_df = pd.read_csv("oafc-all-history-1907-08-on.csv")  # assume columns li
 
 # Load your player names from CSV
 player_df = pd.read_csv("oafc-player-names-1989-on.csv")  # Replace with actual filename
-player_names = sorted(player_df["player_name"].dropna().unique())
+player_names = sorted(player_df["x"].dropna().unique())
 
 # Custom function: allow autocomplete-like dropdown with fallback
 def player_input(label, key):
