@@ -21,7 +21,13 @@ sheet = client.open_by_key("1NAXfRtRqvHda4uyKqdOTgxxSeEwKdLNyUKNl8A-owxQ").sheet
 st.title("Latics Match Input Form")
 
 st.markdown("""
-Welcome to the **Latics Match Input Form**.  
+Welcome to the **Latics Historical Match Input Form**.  
+You will find in the first drop down menu every single match in Oldham Athletic's checkered history.
+You can search by opponent and you'll have listed by date each match against that team.
+The very oldest fixtures were typed into a spreadsheet manually from the Stewart Beckett history books.
+However, adding in each player that played in each match, and each goalscorer (and time, where known), is a huge undertaking for any individual.
+What we would like is to digitise this shared and glorious history of ours, and if we are able to share out this task amongst our fanbase, it will immeasurably help in terms of constructing such a database.
+To do so will enable authoritative lists of appearances by players at the club, and also of goalscorers.
 Please select a match you know some information about and fill in as many details as you can, including attendance figures, team colours, starting XI, and scorers.
 
 All contributions will help build a detailed archive of Oldham Athletic's matches. Thank you!
@@ -29,6 +35,23 @@ All contributions will help build a detailed archive of Oldham Athletic's matche
 
 # Load your 5,000-match dataset
 matches_df = pd.read_csv("oafc-all-history-1907-08-on.csv")  # assume columns like: match_id, date, team_home, team_away
+
+# Load your player names from CSV
+player_df = pd.read_csv("player_names.csv")  # Replace with actual filename
+player_names = sorted(player_df["player_name"].dropna().unique())
+
+# Custom function: allow autocomplete-like dropdown with fallback
+def player_input(label, key):
+    selected = st.selectbox(
+        f"Start typing to search {label} (or type your own):",
+        options=[""] + player_names,
+        index=0,
+        key=f"{key}_selectbox"
+    )
+    if selected == "":
+        return st.text_input(f"Enter {label}:", key=f"{key}_text")
+    else:
+        return selected
 
 # Create a searchable dropdown
 matches_df['match_label'] = matches_df.apply(
@@ -44,23 +67,23 @@ with st.form("input_form"):
     away_attendance = st.number_input("Away attendance", min_value=0, step=1)
 
     # who was in the lineup?
-    oafc_no1 = st.text_input("Latics No.1")
-    oafc_no2 = st.text_input("Latics No.2")
-    oafc_no3 = st.text_input("Latics No.3")
-    oafc_no4 = st.text_input("Latics No.4")
-    oafc_no5 = st.text_input("Latics No.5")
-    oafc_no6 = st.text_input("Latics No.6")
-    oafc_no7 = st.text_input("Latics No.7")
-    oafc_no8 = st.text_input("Latics No.8")
-    oafc_no9 = st.text_input("Latics No.9")
-    oafc_no10 = st.text_input("Latics No.10")
-    oafc_no11 = st.text_input("Latics No.11")
-    oafc_usedsub1 = st.text_input("Latics Used substitute 1")
-    oafc_usedsub2 = st.text_input("Latics Used substitute 2")
-    oafc_usedsub3 = st.text_input("Latics Used substitute 3")
-    oafc_usedsub4 = st.text_input("Latics Used substitute 4")
-    oafc_usedsub5 = st.text_input("Latics Used substitute 5")
-    oafc_unusedsubs = st.text_input("Latics Unused subs (list all if possible)")
+    oafc_no1 = player_input("Latics No.1","oafc_no1")
+    oafc_no2 = player_input("Latics No.2","oafc_no2")
+    oafc_no3 = player_input("Latics No.3","oafc_no3")
+    oafc_no4 = player_input("Latics No.4","oafc_no4")
+    oafc_no5 = player_input("Latics No.5","oafc_no5")
+    oafc_no6 = player_input("Latics No.6","oafc_no6")
+    oafc_no7 = player_input("Latics No.7","oafc_no7")
+    oafc_no8 = player_input("Latics No.8","oafc_no8")
+    oafc_no9 = player_input("Latics No.9","oafc_no9")
+    oafc_no10 = player_input("Latics No.10","oafc_no10")
+    oafc_no11 = player_input("Latics No.11","oafc_no11")
+    oafc_usedsub1 = player_input("Latics Used substitute 1","oafc_usedsub1")
+    oafc_usedsub2 = player_input("Latics Used substitute 2","oafc_usedsub2")
+    oafc_usedsub3 = player_input("Latics Used substitute 3","oafc_usedsub3")
+    oafc_usedsub4 = player_input("Latics Used substitute 4","oafc_usedsub4")
+    oafc_usedsub5 = player_input("Latics Used substitute 5","oafc_usedsub5")
+    oafc_unusedsubs = player_input("Latics Unused subs (list all if possible)","oafc_unusedsubs")
     oafc_scorer1 = st.text_input("Latics goalscorer 1")
     oafc_goaltime1 = st.text_input("Latics goal time 1")
     oafc_scorer2 = st.text_input("Latics goalscorer 2")
