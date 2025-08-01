@@ -75,14 +75,16 @@ with st.form("input_form"):
     oafc_colour = st.selectbox(
         "OAFC kit colour",
         [
-            "Red", "Blue", "Green", "White", "Black", "Yellow", "Orange", "Purple", 
+            "Blue", "Blue and white stripes", "Blue and red hoops", "Red", "Red and white stripes", "Green", "White", 
+            "Black", "Yellow", "Orange", "Purple", 
             "Claret", "Navy", "Sky Blue", "Amber", "Maroon", "Gold", "Grey", "Other"
         ]
     )
     opp_colour = st.selectbox(
         "Opponent kit colour",
         [
-            "Red", "Blue", "Green", "White", "Black", "Yellow", "Orange", "Purple", 
+            "Red", "Red and white", "Red and blue", "Blue", "Blue and white", "Green", "White", "Black", "Yellow", 
+            "Orange", "Purple", 
             "Claret", "Navy", "Sky Blue", "Amber", "Maroon", "Gold", "Grey", "Other"
         ]
     )
@@ -129,7 +131,8 @@ with st.form("input_form"):
             oafc_goaltime4,
             oafc_scorer5,
             oafc_goaltime5,
-            notes
+            notes,
+            author
         ]
         sheet.append_row(row_values)
         st.success("Submission received. Thank you!")
