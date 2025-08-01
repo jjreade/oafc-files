@@ -104,8 +104,8 @@ with st.form("input_form"):
     oafc_goaltime9 = st.text_input("Latics goal time 9")
     oafc_scorer10 = st.text_input("Latics goalscorer 10")
     oafc_goaltime10 = st.text_input("Latics goal time 10")
-    oafc_scorer5 = st.text_input("Latics goalscorer 5")
-    oafc_goaltime5 = st.text_input("Latics goal time 5")
+    oafc_scorer11 = st.text_input("Latics goalscorer 11")
+    oafc_goaltime11 = st.text_input("Latics goal time 11")
     
     # New: Kit colours
     oafc_colour = st.selectbox(
