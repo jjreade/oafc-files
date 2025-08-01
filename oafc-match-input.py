@@ -1,6 +1,28 @@
 import streamlit as st
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 import pandas as pd
 from datetime import datetime
+
+# Define scope and credentials
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_name("oafc-data-input-6b137d89c827.json", scope)
+
+# Authorise client
+client = gspread.authorize(creds)
+
+# Open the sheet by name or ID
+sheet = client.open_by_key("1NAXfRtRqvHda4uyKqdOTgxxSeEwKdLNyUKNl8A-owxQ").sheet1
+
+# --- Title and Introduction ---
+st.title("Latics Match Input Form")
+
+st.markdown("""
+Welcome to the **Latics Match Input Form**.  
+Please select a match you know some information about and fill in as many details as you can, including attendance figures, team colours, starting XI, and scorers.
+
+All contributions will help build a detailed archive of Oldham Athletic's matches. Thank you!
+""")
 
 # Load your 5,000-match dataset
 matches_df = pd.read_csv("oafc-all-history-1907-08-on.csv")  # assume columns like: match_id, date, team_home, team_away
@@ -30,11 +52,11 @@ with st.form("input_form"):
     oafc_no9 = st.text_input("Latics No.9")
     oafc_no10 = st.text_input("Latics No.10")
     oafc_no11 = st.text_input("Latics No.11")
-    oafc_usedsub1 = st.text_input("Latics Used substitue 1")
-    oafc_usedsub2 = st.text_input("Latics Used substitue 2")
-    oafc_usedsub3 = st.text_input("Latics Used substitue 3")
-    oafc_usedsub4 = st.text_input("Latics Used substitue 4")
-    oafc_usedsub5 = st.text_input("Latics Used substitue 5")
+    oafc_usedsub1 = st.text_input("Latics Used substitute 1")
+    oafc_usedsub2 = st.text_input("Latics Used substitute 2")
+    oafc_usedsub3 = st.text_input("Latics Used substitute 3")
+    oafc_usedsub4 = st.text_input("Latics Used substitute 4")
+    oafc_usedsub5 = st.text_input("Latics Used substitute 5")
     oafc_scorer1 = st.text_input("Latics goalscorer 1")
     oafc_goaltime1 = st.text_input("Latics goal time 1")
     oafc_scorer2 = st.text_input("Latics goalscorer 2")
@@ -62,49 +84,49 @@ with st.form("input_form"):
         ]
     )
     notes = st.text_area("Additional comments")
+    author = st.text_area("Your name (if you want credit, otherwise leave blank)")
     submit = st.form_submit_button("Submit")
 
     if submit:
         # Extract match info
         # match_id = matches_df[matches_df['match_label'] == selected_match]['match_id'].values[0]
         match_row = matches_df[matches_df['match_label'] == selected_match].iloc[0]
-        row = {
-            "timestamp": datetime.now(),
-            # "match_id": match_id,
-            "match_label": selected_match,
-            "rating": performance,
-            "total_attendance": total_attendance,
-            "away_attendance": away_attendance,
-            "oafc_colour": oafc_colour,
-            "opp_colour": opp_colour,
-            "oafc_no1": oafc_no1,
-            "oafc_no2": oafc_no2,
-            "oafc_no3": oafc_no3,
-            "oafc_no4": oafc_no4,
-            "oafc_no5": oafc_no5,
-            "oafc_no6": oafc_no6,
-            "oafc_no7": oafc_no7,
-            "oafc_no8": oafc_no8,
-            "oafc_no9": oafc_no9,
-            "oafc_no10": oafc_no10,
-            "oafc_no11": oafc_no11,
-            "oafc_usedsub1": oafc_usedsub1,
-            "oafc_usedsub2": oafc_usedsub2,
-            "oafc_usedsub3": oafc_usedsub3,
-            "oafc_usedsub4": oafc_usedsub4,
-            "oafc_usedsub5": oafc_usedsub5,
-            "oafc_scorer1": oafc_scorer1,
-            "oafc_goaltime1": oafc_goaltime1,
-            "oafc_scorer2": oafc_scorer2,
-            "oafc_goaltime2": oafc_goaltime2,
-            "oafc_scorer3": oafc_scorer3,
-            "oafc_goaltime3": oafc_goaltime3,
-            "oafc_scorer4": oafc_scorer4,
-            "oafc_goaltime4": oafc_goaltime4,
-            "oafc_scorer5": oafc_scorer5,
-            "oafc_goaltime5": oafc_goaltime5,
-            "notes": notes
-        }
-        # Append to CSV or send to Google Sheet
-        pd.DataFrame([row]).to_csv("submissions.csv", mode='a', header=True, index=False)
+        # NEW - writing to Google Sheet
+        row_values = [
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            selected_match,
+            performance,
+            total_attendance,
+            away_attendance,
+            oafc_colour,
+            opp_colour,
+            oafc_no1,
+            oafc_no2,
+            oafc_no3,
+            oafc_no4,
+            oafc_no5,
+            oafc_no6,
+            oafc_no7,
+            oafc_no8,
+            oafc_no9,
+            oafc_no10,
+            oafc_no11,
+            oafc_usedsub1,
+            oafc_usedsub2,
+            oafc_usedsub3,
+            oafc_usedsub4,
+            oafc_usedsub5,
+            oafc_scorer1,
+            oafc_goaltime1,
+            oafc_scorer2,
+            oafc_goaltime2,
+            oafc_scorer3,
+            oafc_goaltime3,
+            oafc_scorer4,
+            oafc_goaltime4,
+            oafc_scorer5,
+            oafc_goaltime5,
+            notes
+        ]
+        sheet.append_row(row_values)
         st.success("Submission received. Thank you!")
