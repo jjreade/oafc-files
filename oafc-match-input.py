@@ -4,11 +4,14 @@ from oauth2client.service_account import ServiceAccountCredentials
 import pandas as pd
 from datetime import datetime
 
+# Load Google credentials from Streamlit secrets
+json_creds = st.secrets["google_service_account"]
+
 # Define scope and credentials
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("oafc-data-input-6b137d89c827.json", scope)
 
-# Authorise client
+creds = ServiceAccountCredentials.from_json_keyfile_dict(json_creds, scope)
+
 client = gspread.authorize(creds)
 
 # Open the sheet by name or ID
