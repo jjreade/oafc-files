@@ -43,13 +43,13 @@ player_names = sorted(player_df["x"].dropna().unique())
 # Custom function: allow autocomplete-like dropdown with fallback
 def player_input(label, key):
     selected = st.selectbox(
-        f"Start typing to search {label} (or type your own):",
+        f"Start typing to search for {label} (or type your own in the box below):",
         options=[""] + player_names,
         index=0,
         key=f"{key}_selectbox"
     )
     if selected == "":
-        return st.text_input(f"Enter {label}:", key=f"{key}_text")
+        return st.text_input(f"Enter {label} manually instead:", key=f"{key}_text")
     else:
         return selected
 
