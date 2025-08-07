@@ -76,7 +76,7 @@ with st.form("input_form"):
     away_fan_location = st.selectbox(
         "Location of away fans at match",
         [
-            "Behind goal", "Along side", "Behind part of goal", "Along part of side", 
+            "Don't know", "Behind goal", "Along side", "Behind part of goal", "Along part of side", 
             "Behind goal and along side", "Behind part of goal and along side", "Behind goal and along part of side",
             "Behind part of goal and along part of side"
         ]
