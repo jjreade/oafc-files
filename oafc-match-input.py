@@ -72,6 +72,15 @@ with st.form("input_form"):
     # New: Attendance fields
     total_attendance = st.number_input("Total attendance", min_value=0, step=1)
     away_attendance = st.number_input("Away attendance", min_value=0, step=1)
+    
+    away_fan_location = st.selectbox(
+        "Location of away fans at match",
+        [
+            "Behind goal", "Along side", "Behind part of goal", "Along part of side", 
+            "Behind goal and along side", "Behind part of goal and along side", "Behind goal and along part of side",
+            "Behind part of goal and along part of side"
+        ]
+    )
 
     # who was in the lineup?
     oafc_no1 = player_input("Latics No.1","oafc_no1")
@@ -113,8 +122,7 @@ with st.form("input_form"):
     oafc_goaltime10 = st.text_input("Latics goal time 10")
     oafc_scorer11 = player_input("Latics goalscorer 11","oafc_scorer11")
     oafc_goaltime11 = st.text_input("Latics goal time 11")
-    
-    # New: Kit colours
+    # Kit colours
     oafc_colour = st.selectbox(
         "OAFC kit colour",
         [
@@ -146,6 +154,7 @@ with st.form("input_form"):
             performance,
             total_attendance,
             away_attendance,
+            away_fan_location,
             oafc_colour,
             opp_colour,
             oafc_no1,
