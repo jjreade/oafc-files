@@ -29,6 +29,12 @@ df_filtered = df[(df["div"] == selected_div) & (df["season"] == selected_season)
 
 df_filtered["date"] = df_filtered["date"].dt.strftime("%Y-%m-%d")
 
+# Format matchday table probabilities
+matches_display = df_filtered.copy()
+matches_display["forcPH"] = (matches_display["forcPH"] * 100).round(1).astype(str) + "%"
+matches_display["forcPD"] = (matches_display["forcPD"] * 100).round(1).astype(str) + "%"
+matches_display["forcPA"] = (matches_display["forcPA"] * 100).round(1).astype(str) + "%"
+
 # Get the full league name for the selected div
 full_division_name = df_filtered["division"].iloc[0]
 
@@ -38,8 +44,12 @@ tab1, tab2 = st.tabs(["📅 Matches & Predictions", "📊 League Table"])
 # ---------- TAB 1 ----------
 with tab1:
     st.subheader(f"Matches — {full_division_name}, {selected_season}")
-    cols_to_show = ["date", "team1", "team2", "forcPH", "forcPD", "forcPA", "xG1", "xG2", "goals1", "goals2"]
-    st.dataframe(df_filtered[cols_to_show].sort_values("date"))
+    # cols_to_show = ["date", "team1", "team2", "forcPH", "forcPD", "forcPA", "xG1", "xG2", "goals1", "goals2"]
+    # st.dataframe(df_filtered[cols_to_show].sort_values("date"))
+    st.dataframe(
+        matches_display[["date", "team1", "team2", "forcPH", "forcPD", "forcPA", "xG1", "xG2", "goals1", "goals2"]],
+        hide_index=True
+    )
 
 # ---------- TAB 2 ----------
 with tab2:
