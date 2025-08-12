@@ -45,7 +45,36 @@ with tab1:
 with tab2:
     st.subheader(f"League Table — {full_division_name}, {selected_season}")
 
-    # Predicted table
+    played = df_filtered.dropna(subset=["goals1", "goals2"])
+    unplayed = df_filtered[df_filtered[["goals1", "goals2"]].isna().any(axis=1)]
+
+    # --- Actual table ---
+    actual_points_t1 = played.groupby("team1").apply(
+        lambda x: (3*(x["goals1"] > x["goals2"]) + 1*(x["goals1"] == x["goals2"])).sum()
+    ).reset_index(name="points_home")
+    actual_points_t2 = played.groupby("team2").apply(
+        lambda x: (3*(x["goals2"] > x["goals1"]) + 1*(x["goals2"] == x["goals1"])).sum()
+    ).reset_index(name="points_away")
+    actual_points = pd.merge(actual_points_t1, actual_points_t2, left_on="team1", right_on="team2", how="outer")
+    actual_points["team"] = actual_points["team1"].combine_first(actual_points["team2"])
+    actual_points["points"] = actual_points["points_home"].fillna(0) + actual_points["points_away"].fillna(0)
+    actual_points = actual_points[["team", "points"]]
+
+    actual_gd_t1 = played.groupby("team1").apply(lambda x: (x["goals1"] - x["goals2"]).sum()).reset_index(name="gd_home")
+    actual_gd_t2 = played.groupby("team2").apply(lambda x: (x["goals2"] - x["goals1"]).sum()).reset_index(name="gd_away")
+    actual_gd = pd.merge(actual_gd_t1, actual_gd_t2, left_on="team1", right_on="team2", how="outer")
+    actual_gd["team"] = actual_gd["team1"].combine_first(actual_gd["team2"])
+    actual_gd["gd"] = actual_gd["gd_home"].fillna(0) + actual_gd["gd_away"].fillna(0)
+    actual_gd = actual_gd[["team", "gd"]]
+
+    actual_table = pd.merge(actual_points, actual_gd, on="team").fillna(0)
+    actual_table = actual_table.sort_values(by=["points", "gd"], ascending=False).reset_index(drop=True)
+    actual_table.index = actual_table.index + 1
+
+    st.markdown("**Actual Table (Played Matches So Far)**")
+    st.dataframe(actual_table)
+
+    # --- Predicted table (full season) ---
     pred_points_t1 = df_filtered.groupby("team1").apply(lambda x: (3 * x["forcPH"] + 1 * x["forcPD"]).sum()).reset_index(name="exp_points_home")
     pred_points_t2 = df_filtered.groupby("team2").apply(lambda x: (3 * x["forcPA"] + 1 * x["forcPD"]).sum()).reset_index(name="exp_points_away")
     pred_points = pd.merge(pred_points_t1, pred_points_t2, left_on="team1", right_on="team2", how="outer")
@@ -53,7 +82,6 @@ with tab2:
     pred_points["exp_points"] = pred_points["exp_points_home"].fillna(0) + pred_points["exp_points_away"].fillna(0)
     pred_points = pred_points[["team", "exp_points"]]
 
-    # Expected goal difference
     exp_gd_t1 = df_filtered.groupby("team1").apply(lambda x: (x["xG1"] - x["xG2"]).sum()).reset_index(name="exp_gd_home")
     exp_gd_t2 = df_filtered.groupby("team2").apply(lambda x: (x["xG2"] - x["xG1"]).sum()).reset_index(name="exp_gd_away")
     exp_gd = pd.merge(exp_gd_t1, exp_gd_t2, left_on="team1", right_on="team2", how="outer")
@@ -61,37 +89,49 @@ with tab2:
     exp_gd["exp_gd"] = exp_gd["exp_gd_home"].fillna(0) + exp_gd["exp_gd_away"].fillna(0)
     exp_gd = exp_gd[["team", "exp_gd"]]
 
-    predicted_table = pd.merge(pred_points, exp_gd, on="team")
+    predicted_table = pd.merge(pred_points, exp_gd, on="team").fillna(0)
     predicted_table = predicted_table.sort_values(by=["exp_points", "exp_gd"], ascending=False).reset_index(drop=True)
     predicted_table.index = predicted_table.index + 1
-    
-    st.markdown("**Predicted Table**")
+
+    st.markdown("**Predicted Table (Full Season Forecast)**")
     st.dataframe(predicted_table)
 
-    # Actual table (if actual results available)
-    if "goals1" in df_filtered.columns and not df_filtered["goals1"].isna().all():
-        actual_points_t1 = df_filtered.groupby("team1").apply(
-            lambda x: (3*(x["goals1"] > x["goals2"]) + 1*(x["goals1"] == x["goals2"])).sum()
-        ).reset_index(name="points_home")
-        actual_points_t2 = df_filtered.groupby("team2").apply(
-            lambda x: (3*(x["goals2"] > x["goals1"]) + 1*(x["goals2"] == x["goals1"])).sum()
-        ).reset_index(name="points_away")
-        actual_points = pd.merge(actual_points_t1, actual_points_t2, left_on="team1", right_on="team2", how="outer")
-        actual_points["team"] = actual_points["team1"].combine_first(actual_points["team2"])
-        actual_points["points"] = actual_points["points_home"].fillna(0) + actual_points["points_away"].fillna(0)
-        actual_points = actual_points[["team", "points"]]
+    # --- Hybrid table: actual points so far + predicted points for unplayed matches ---
+    # Actual points so far
+    points_actual = actual_points.rename(columns={"points": "points_actual"})
 
-        # Actual goal difference
-        actual_gd_t1 = df_filtered.groupby("team1").apply(lambda x: (x["goals1"] - x["goals2"]).sum()).reset_index(name="gd_home")
-        actual_gd_t2 = df_filtered.groupby("team2").apply(lambda x: (x["goals2"] - x["goals1"]).sum()).reset_index(name="gd_away")
-        actual_gd = pd.merge(actual_gd_t1, actual_gd_t2, left_on="team1", right_on="team2", how="outer")
-        actual_gd["team"] = actual_gd["team1"].combine_first(actual_gd["team2"])
-        actual_gd["gd"] = actual_gd["gd_home"].fillna(0) + actual_gd["gd_away"].fillna(0)
-        actual_gd = actual_gd[["team", "gd"]]
+    # Predicted points for unplayed matches
+    pred_home = unplayed.groupby("team1").apply(lambda x: (3 * x["forcPH"] + 1 * x["forcPD"]).sum()).reset_index(name="points_home")
+    pred_away = unplayed.groupby("team2").apply(lambda x: (3 * x["forcPA"] + 1 * x["forcPD"]).sum()).reset_index(name="points_away")
+    points_pred = pd.merge(pred_home, pred_away, left_on="team1", right_on="team2", how="outer")
+    points_pred["team"] = points_pred["team1"].combine_first(points_pred["team2"])
+    points_pred["points_predicted"] = points_pred["points_home"].fillna(0) + points_pred["points_away"].fillna(0)
+    points_pred = points_pred[["team", "points_predicted"]]
 
-        actual_table = pd.merge(actual_points, actual_gd, on="team")
-        actual_table = actual_table.sort_values(by=["points", "gd"], ascending=False).reset_index(drop=True)
-        actual_table.index = actual_table.index + 1
+    # Actual goal difference so far
+    gd_actual = actual_gd.rename(columns={"gd": "gd_actual"})
 
-        st.markdown("**Actual Table**")
-        st.dataframe(actual_table)
+    # Predicted goal difference for unplayed matches
+    gd_pred_home = unplayed.groupby("team1").apply(lambda x: (x["xG1"] - x["xG2"]).sum()).reset_index(name="gd_home")
+    gd_pred_away = unplayed.groupby("team2").apply(lambda x: (x["xG2"] - x["xG1"]).sum()).reset_index(name="gd_away")
+    gd_pred = pd.merge(gd_pred_home, gd_pred_away, left_on="team1", right_on="team2", how="outer")
+    gd_pred["team"] = gd_pred["team1"].combine_first(gd_pred["team2"])
+    gd_pred["gd_predicted"] = gd_pred["gd_home"].fillna(0) + gd_pred["gd_away"].fillna(0)
+    gd_pred = gd_pred[["team", "gd_predicted"]]
+
+    # Combine actual + predicted
+    hybrid = pd.merge(points_actual, points_pred, on="team", how="outer").fillna(0)
+    hybrid = pd.merge(hybrid, gd_actual, on="team", how="outer").fillna(0)
+    hybrid = pd.merge(hybrid, gd_pred, on="team", how="outer").fillna(0)
+
+    hybrid["total_points"] = hybrid["points_actual"] + hybrid["points_predicted"]
+    hybrid["total_gd"] = hybrid["gd_actual"] + hybrid["gd_predicted"]
+
+    hybrid = hybrid.sort_values(by=["total_points", "total_gd"], ascending=False).reset_index(drop=True)
+    hybrid.index = hybrid.index + 1
+
+    st.markdown("**Projected Final Table (Actual + Predicted)**")
+    st.dataframe(hybrid[["team", "total_points", "total_gd"]].rename(columns={
+        "total_points": "Points",
+        "total_gd": "Goal Difference"
+    }))
