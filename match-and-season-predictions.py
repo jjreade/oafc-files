@@ -34,6 +34,8 @@ matches_display = df_filtered.copy()
 matches_display["forcPH"] = (matches_display["forcPH"] * 100).round(1).astype(str) + "%"
 matches_display["forcPD"] = (matches_display["forcPD"] * 100).round(1).astype(str) + "%"
 matches_display["forcPA"] = (matches_display["forcPA"] * 100).round(1).astype(str) + "%"
+matches_display["xG1"] = matches_display["xG1"].round(2)
+matches_display["xG2"] = matches_display["xG2"].round(2)
 
 # Get the full league name for the selected div
 full_division_name = df_filtered["division"].iloc[0]
