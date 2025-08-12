@@ -27,6 +27,8 @@ selected_season = st.sidebar.selectbox("Select Season", seasons, index=default_s
 
 df_filtered = df[(df["div"] == selected_div) & (df["season"] == selected_season)]
 
+df_filtered["date"] = df_filtered["date"].dt.strftime("%Y-%m-%d")
+
 # Get the full league name for the selected div
 full_division_name = df_filtered["division"].iloc[0]
 
