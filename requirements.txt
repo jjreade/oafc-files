@@ -5,4 +5,3 @@ oauth2client
 numpy
 matplotlib
 openpyxl
-re
