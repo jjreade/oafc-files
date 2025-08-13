@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import openpyxl
 from openpyxl.styles import PatternFill
+import re
 
 # Load data
 df = pd.read_csv("squad-grid-2025.csv")
@@ -27,8 +28,8 @@ def style_event(val):
     # Match patterns
     if val_str == "x" or val_str.startswith("x "):
         return event_map["start"]["icon"] + val_str.replace("x", "").strip(), event_map["start"]["color"]
-    if "g" in val_str and not val_str.startswith("sub"):
-        return event_map["goal"]["icon"] + val_str.replace("g", "").strip(), event_map["goal"]["color"]
+    if re.match(r"^g\s*\d*", val_str):  # 'g' at start, optional spaces, then digits
+        return event_map["goal"]["icon"] + val_str.replace("g", "", 1).strip(), event_map["goal"]["color"]
     if val_str.startswith("off"):
         return event_map["sub_off"]["icon"] + val_str.replace("off", "").strip(), event_map["sub_off"]["color"]
     if "sub" in val_str and "on" in val_str:
@@ -42,7 +43,7 @@ def style_event(val):
     return val, ""
 
 # Columns
-match_info_cols = ["Unnamed: 0", "Date", "opposition", "goals1", "goals2", "venue", "Kickoff", "attendance", "awayatt", "post.position"]
+match_info_cols = ["Unnamed: 0", "Date", "opposition", "goals1", "goals2", "venue", "Kickoff", "attendance", "awayatt", "post.position", "referee"]
 player_cols = [c for c in df.columns if c not in match_info_cols]
 
 # Create a copy with icons
