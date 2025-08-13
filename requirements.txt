@@ -2,3 +2,6 @@ streamlit
 pandas
 gspread
 oauth2client
+numpy
+matplotlib
+openpyxl
