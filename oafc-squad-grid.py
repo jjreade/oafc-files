@@ -133,4 +133,34 @@ def export_excel_with_bg_and_legend(df_disp: pd.DataFrame, bg_lookup: dict, file
 
     # headers
     for j, col in enumerate(df_disp.columns, start=1):
-        ws.cell(row=1, colum
+        ws.cell(row=1, column=j, value=col)
+
+    # body
+    for i in range(len(df_disp)):
+        for j, col in enumerate(df_disp.columns, start=1):
+            val = df_disp.iloc[i, j-1]
+            cell = ws.cell(row=i+2, column=j, value=val)
+            bg = bg_lookup.get((i, col))
+            if bg:
+                hex6 = bg.replace("#", "")
+                cell.fill = PatternFill(start_color=hex6, end_color=hex6, fill_type="solid")
+
+    # legend after table
+    legend_start_row = len(df_disp) + 4
+    ws.cell(row=legend_start_row, column=1, value="Legend:")
+    for idx, item in enumerate(legend_items, start=legend_start_row + 1):
+        ws.cell(row=idx, column=1, value=item)
+
+    return wb
+
+if st.button("📥 Export to Excel"):
+    from io import BytesIO
+    bio = BytesIO()
+    wb = export_excel_with_bg_and_legend(df_display, bg_map)
+    wb.save(bio)
+    st.download_button(
+        "Download .xlsx",
+        data=bio.getvalue(),
+        file_name="squad_grid.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
