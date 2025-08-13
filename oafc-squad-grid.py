@@ -63,6 +63,9 @@ st.title("Oldham Athletic 2025 Season — Match Events")
 st.write("Colour-coded match events with icons:")
 
 # Apply Streamlit Styler for table display
+df_display = df_display.astype(str)  # ✅ fix mixed-type Arrow error
+
+# Apply Streamlit Styler for table display
 def highlight_cells(val, row_idx, col_name):
     return f"background-color: #{cell_colors.get((row_idx, col_name), '')}" if (row_idx, col_name) in cell_colors else ""
 
