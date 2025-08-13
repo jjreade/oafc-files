@@ -28,7 +28,7 @@ def style_event(val):
     # Match patterns
     if val_str == "x" or val_str.startswith("x "):
         return event_map["start"]["icon"] + val_str.replace("x", "").strip(), event_map["start"]["color"]
-    if re.match(r"^g\s*\d*", val_str):  # 'g' at start, optional spaces, then digits
+    if re.match(r"^\s*g\s*\d*", val_str):  # 'g' at start, optional spaces, then digits
         return event_map["goal"]["icon"] + val_str.replace("g", "", 1).strip(), event_map["goal"]["color"]
     if val_str.startswith("off"):
         return event_map["sub_off"]["icon"] + val_str.replace("off", "").strip(), event_map["sub_off"]["color"]
