@@ -6,7 +6,8 @@ import re
 df = pd.read_csv("squad-grid-2025.csv")
 
 # Define which columns contain player entries
-player_columns = [col for col in df.columns if "referee" not in col.lower()]
+match_info_cols = ["Unnamed: 0", "Date", "opposition", "goals1", "goals2", "venue", "Kickoff", "attendance", "awayatt", "post.position", "referee"]
+player_columns = [c for c in df.columns if c not in match_info_cols]
 
 # Event symbol mapping
 event_symbols = {
