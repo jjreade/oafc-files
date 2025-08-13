@@ -24,12 +24,12 @@ player_cols = get_player_cols(df)
 EVENT_RE = re.compile(
     r'(?P<sub_on>\bsub\s*\d*\s*on\s*(?P<sub_on_min>\d+)(?:\s*\d+)?\b)|'  # sub 2 on 68 2
     r'(?P<off>\boff\s*(?P<off_min>\d+)\b)|'                               # off 61
-    r'(?P<og>\bog\s*(?P<og_min>\d+)\b)|'                                   # og 12
-    r'(?P<g>\bg\s*(?P<g_min>\d+)\b)|'                                      # g 62 / g62
-    r'(?P<y>\by\s*(?P<y_min>\d+)?\b)|'                                     # y / y 50
-    r'(?P<r>\br\s*(?P<r_min>\d+)?\b)|'                                     # r / r 90
-    r'(?P<uu>\buu\b)|'                                                     # uu
-    r'(?P<x>\bx\b)',                                                       # x
+    r'(?P<og>\bog\s*(?P<og_min>\d+)\b)|'                                  # og 12
+    r'(?P<g>\bg\s*(?P<g_min>\d+)\b)|'                                     # g 62 / g62
+    r'(?P<y>\by\s*(?P<y_min>\d+)?\b)|'                                    # y / y 50
+    r'(?P<r>\br\s*(?P<r_min>\d+)?\b)|'                                    # r / r 90
+    r'(?P<uu>\buu\b)|'                                                    # uu
+    r'(?P<x>\bx\b)',                                                      # x
     re.IGNORECASE
 )
 
@@ -40,23 +40,18 @@ BG_SUB_OFF= "#FCF8E3"  # pale yellow
 BG_UNUSED = "#E6E6E6"  # light grey
 
 def format_cell(raw) -> tuple[str, str]:
-    """
-    Parse one player cell.
-    Returns (display_string, background_hex)
-    """
     if raw is None:
         return "", ""
     s = str(raw).strip().lower()
     if not s or s == "nan":
         return "", ""
 
-    # Presence flags / minutes
     unused   = bool(re.search(r'\buu\b', s))
     sub_on_m = re.search(r'\bsub\s*\d*\s*on\s*(\d+)(?:\s*\d+)?', s)
     off_m    = re.search(r'\boff\s*(\d+)\b', s)
     started  = bool(re.search(r'\bx\b', s))
 
-    # Background precedence: unused > sub_on > sub_off > start > none
+    # Background precedence
     if unused:
         bg = BG_UNUSED
     elif sub_on_m:
@@ -87,7 +82,6 @@ def format_cell(raw) -> tuple[str, str]:
         elif gd["uu"]:
             parts = ["🚫"]  # unused overrides display
         elif gd["x"]:
-            # Add a start badge so starts are visible alongside bg colour
             if not unused and not sub_on_m:
                 parts.insert(0, "🟩")
 
@@ -104,7 +98,6 @@ for col in player_cols:
         if bg:
             bg_map[(i, col)] = bg
 
-# Avoid Arrow mixed-type issues
 df_display = df_display.astype(str)
 
 # ---------- Style for Streamlit ----------
@@ -116,8 +109,23 @@ styled = df_display.style.apply(col_bg_styler, axis=0, subset=player_cols)
 st.title("Oldham Athletic — Season Grid (emojis + role backgrounds)")
 st.dataframe(styled, use_container_width=True)
 
-# ---------- Excel export (preserve emojis + role backgrounds) ----------
-def export_excel_with_bg(df_disp: pd.DataFrame, bg_lookup: dict, filename: str = "squad_grid.xlsx"):
+# ---------- Legend ----------
+legend_items = [
+    "🟩 Start",
+    "🔺 Sub on (minute)",
+    "🔻 Sub off (minute)",
+    "⚽ Goal (minute)",
+    "🔴⚽ Own Goal (minute)",
+    "🟨 Yellow Card (minute)",
+    "🟥 Red Card (minute)",
+    "🚫 Unused Sub"
+]
+legend_text = "\n".join(legend_items)
+st.markdown("### Legend")
+st.markdown("```\n" + legend_text + "\n```")
+
+# ---------- Excel export ----------
+def export_excel_with_bg_and_legend(df_disp: pd.DataFrame, bg_lookup: dict, filename: str = "squad_grid.xlsx"):
     from openpyxl import Workbook
     from openpyxl.styles import PatternFill
     wb = Workbook()
@@ -125,27 +133,4 @@ def export_excel_with_bg(df_disp: pd.DataFrame, bg_lookup: dict, filename: str =
 
     # headers
     for j, col in enumerate(df_disp.columns, start=1):
-        ws.cell(row=1, column=j, value=col)
-
-    # body
-    for i in range(len(df_disp)):
-        for j, col in enumerate(df_disp.columns, start=1):
-            val = df_disp.iloc[i, j-1]
-            cell = ws.cell(row=i+2, column=j, value=val)
-            bg = bg_lookup.get((i, col))
-            if bg:
-                hex6 = bg.replace("#", "")
-                cell.fill = PatternFill(start_color=hex6, end_color=hex6, fill_type="solid")
-    return wb
-
-if st.button("📥 Export to Excel"):
-    from io import BytesIO
-    bio = BytesIO()
-    wb = export_excel_with_bg(df_display, bg_map)
-    wb.save(bio)
-    st.download_button(
-        "Download .xlsx",
-        data=bio.getvalue(),
-        file_name="squad_grid.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+        ws.cell(row=1, colum
