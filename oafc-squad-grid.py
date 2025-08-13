@@ -1,73 +1,82 @@
-import re
-import pandas as pd
 import streamlit as st
+import pandas as pd
+import re
+import openpyxl
 
-# Example event mapping
-event_map = {
-    "g": ("⚽", "#FFFFFF"),        # Goal
-    "y": ("🟨", "#FFFFFF"),        # Yellow card
-    "r": ("🟥", "#FFFFFF"),        # Red card
-    "og": ("🔴⚽", "#FFFFFF"),      # Own goal (red football)
-}
+st.set_page_config(page_title="Oldham Athletic Squad Grid", layout="wide")
 
-# Background colours for starting/sub statuses
-status_bg = {
-    "start": "#DFF0D8",     # Light green for starting
-    "sub_on": "#D9EDF7",    # Light blue for sub on
-    "sub_off": "#FCF8E3",   # Light yellow for sub off
-}
-
-def format_player_cell(cell):
-    if not isinstance(cell, str) or cell.strip() == "":
-        return "", ""
-
-    text = cell
-    bg_color = ""
-
-    # Detect starting/sub-on/sub-off
-    if re.search(r"\bx\b", text):
-        bg_color = status_bg["start"]
-    elif re.search(r"\bsub\s+\d+\s+on\b", text):
-        bg_color = status_bg["sub_on"]
-    elif re.search(r"\bx\s+\d+\s+off\b", text):
-        bg_color = status_bg["sub_off"]
-
-    # Remove start/sub markers from display text
-    text = re.sub(r"\bx\b", "", text)
-    text = re.sub(r"\bsub\s+\d+\s+on\b", "", text)
-    text = re.sub(r"\bx\s+\d+\s+off\b", "", text)
-
-    # Replace events with emojis
-    def repl_event(match):
-        code = match.group(1).lower()
-        minute = match.group(2)
-        if code in event_map:
-            emoji, _ = event_map[code]
-            return f"{emoji} {minute}"
-        return match.group(0)
-
-    text = re.sub(r"\b(g|y|r|og)\s*(\d+)", repl_event, text)
-
-    return text.strip(), bg_color
-
-def format_dataframe(df):
-    # Define which columns contain player entries
-    match_info_cols = ["Unnamed: 0", "Date", "opposition", "goals1", "goals2", "venue", "Kickoff", "attendance", "awayatt", "post.position", "referee", "stadium"]
-    player_cols = [c for c in df.columns if c not in match_info_cols]
-    styled_df = df.copy()
-
-    styles = pd.DataFrame("", index=df.index, columns=df.columns)
-
-    for col in player_cols:
-        for i, val in df[col].items():
-            new_val, bg = format_player_cell(val)
-            styled_df.at[i, col] = new_val
-            styles.at[i, col] = f"background-color: {bg}" if bg else ""
-
-    return styled_df.style.apply(lambda _: styles, axis=None)
-
-# Example Streamlit app
-st.title("Squad Grid with Events & Status Colours")
-
+# Load CSV
 df = pd.read_csv("squad-grid-2025.csv")
-st.dataframe(format_dataframe(df), use_container_width=True)
+
+# Identify player columns (exclude non-player columns)
+non_player_cols = ["Date", "Opponent", "Score", "Referee", "opp.post.position"]
+player_cols = [col for col in df.columns if col not in non_player_cols]
+
+# Event formatting function
+def format_cell(cell):
+    if pd.isna(cell) or str(cell).strip() == "":
+        return ""
+    
+    text = str(cell)
+    events = []
+
+    # Start
+    if re.search(r"\bx\b", text):
+        events.append("🟦")  # Blue square for starting
+
+    # Sub on
+    if re.search(r"\bsub\s*(\d+)\s*on\b", text, re.IGNORECASE):
+        time = re.search(r"\bsub\s*(\d+)\s*on\b", text, re.IGNORECASE).group(1)
+        events.append(f"🟩{time}'")  # Green square + time
+
+    # Sub off
+    if re.search(r"\b(\d+)\s*off\b", text, re.IGNORECASE):
+        time = re.search(r"\b(\d+)\s*off\b", text, re.IGNORECASE).group(1)
+        events.append(f"⬜{time}'")  # White square + time
+
+    # Goals
+    for match in re.finditer(r"\bg\s*(\d+)", text, re.IGNORECASE):
+        time = match.group(1)
+        events.append(f"⚽{time}'")
+
+    # Own goals
+    for match in re.finditer(r"\bog\s*(\d+)", text, re.IGNORECASE):
+        time = match.group(1)
+        events.append(f"🔴⚽{time}'")
+
+    # Yellow cards
+    for match in re.finditer(r"\byel\b", text, re.IGNORECASE):
+        events.append("🟨")
+
+    # Red cards
+    for match in re.finditer(r"\bred\b", text, re.IGNORECASE):
+        events.append("🟥")
+
+    # Unused sub
+    if re.fullmatch(r"sub", text, re.IGNORECASE):
+        events.append("🪑")  # Bench icon
+
+    return " ".join(events)
+
+# Apply formatting only to player columns
+df_formatted = df.copy()
+for col in player_cols:
+    df_formatted[col] = df[col].apply(format_cell)
+
+# Show in Streamlit
+st.dataframe(df_formatted)
+
+# Download as Excel
+def to_excel(df):
+    from io import BytesIO
+    import openpyxl
+    output = BytesIO()
+    df.to_excel(output, index=False, engine="openpyxl")
+    return output.getvalue()
+
+st.download_button(
+    label="Download as Excel",
+    data=to_excel(df_formatted),
+    file_name="squad_grid_formatted.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
