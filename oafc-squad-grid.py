@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import re
-import openpyxl
 
 st.set_page_config(page_title="Oldham Athletic Squad Grid", layout="wide")
 
@@ -9,7 +8,7 @@ st.set_page_config(page_title="Oldham Athletic Squad Grid", layout="wide")
 df = pd.read_csv("squad-grid-2025.csv")
 
 # Identify player columns (exclude non-player columns)
-non_player_cols = ["Date", "Opponent", "Score", "Referee", "opp.post.position"]
+non_player_cols = ["Unnamed: 0", "Date", "opposition", "goals1", "goals2", "venue", "Kickoff", "attendance", "awayatt", "post.position" ,"opp.post.position", "ftscore1", "ftscore2", "htscore1", "htscore2", "possession1", "possession2", "shotson1", "shotson2", "shotsoff1", "shotsoff2", "corners1", "corners2", "referee", "stadium"]
 player_cols = [col for col in df.columns if col not in non_player_cols]
 
 # Event formatting function
