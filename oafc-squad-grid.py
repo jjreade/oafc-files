@@ -1,100 +1,121 @@
 import streamlit as st
 import pandas as pd
-import openpyxl
-from openpyxl.styles import PatternFill
 import re
 
 # Load data
 df = pd.read_csv("squad-grid-2025.csv")
 
-# Map event keywords to icons and colours
-event_map = {
-    "start": {"icon": "🟩", "color": "90ee90"},  # Light green
-    "goal": {"icon": "⚽", "color": "ffcc80"},   # Light orange
-    "sub_on": {"icon": "⬆", "color": "add8e6"}, # Light blue
-    "sub_off": {"icon": "⬇", "color": "ff7f7f"},# Light red
-    "yellow": {"icon": "🟨", "color": "ffff00"},# Bright yellow
-    "red": {"icon": "🟥", "color": "ff0000"},    # Bright red
-    "unused": {"icon": "🚫", "color": "d3d3d3"} # Light gray
+# Define which columns contain player entries
+player_columns = [col for col in df.columns if "referee" not in col.lower()]
+
+# Event symbol mapping
+event_symbols = {
+    "g": "⚽",   # goal
+    "y": "🟨",  # yellow card
+    "r": "🟥",  # red card
+    "og": "🥅", # own goal
+    "in": "🔺", # sub on
+    "out": "🔻" # sub off
 }
 
-# Function to transform events into icon + minute and colour
-def style_event(val):
-    if pd.isna(val):
-        return "", ""
-    val_str = str(val).strip().lower()
-    if val_str in ["", "nan"]:
-        return "", ""
-    # Match patterns
-    if val_str == "x" or val_str.startswith("x "):
-        return event_map["start"]["icon"] + val_str.replace("x", "").strip(), event_map["start"]["color"]
-    if re.match(r"^\s*g\s*\d*", val_str):  # 'g' at start, optional spaces, then digits
-        return event_map["goal"]["icon"] + val_str.replace("g", "", 1).strip(), event_map["goal"]["color"]
-    if val_str.startswith("off"):
-        return event_map["sub_off"]["icon"] + val_str.replace("off", "").strip(), event_map["sub_off"]["color"]
-    if "sub" in val_str and "on" in val_str:
-        return event_map["sub_on"]["icon"] + val_str.replace("sub on", "").strip(), event_map["sub_on"]["color"]
-    if val_str.startswith("y"):
-        return event_map["yellow"]["icon"] + val_str.replace("y", "").strip(), event_map["yellow"]["color"]
-    if val_str.startswith("r"):
-        return event_map["red"]["icon"] + val_str.replace("r", "").strip(), event_map["red"]["color"]
-    if val_str == "uu":
-        return event_map["unused"]["icon"], event_map["unused"]["color"]
-    return val, ""
+# Regex pattern to capture event + minute
+event_pattern = re.compile(r"(og|g|y|r|in|out)\s*(\d+)?", re.IGNORECASE)
 
-# Columns
-match_info_cols = ["Unnamed: 0", "Date", "opposition", "goals1", "goals2", "venue", "Kickoff", "attendance", "awayatt", "post.position", "referee"]
-player_cols = [c for c in df.columns if c not in match_info_cols]
+def format_events(cell):
+    if pd.isna(cell):
+        return ""
+    text = str(cell).strip()
+    matches = event_pattern.findall(text)
+    if not matches:
+        return text  # No events found
 
-# Create a copy with icons
-df_display = df.copy()
-cell_colors = {}
+    formatted = []
+    for ev, minute in matches:
+        ev = ev.lower()
+        symbol = event_symbols.get(ev, ev)
+        if minute:
+            formatted.append(f"{symbol} {minute}")
+        else:
+            formatted.append(symbol)
+    return " ".join(formatted)
 
-for col in player_cols:
-    for i, val in enumerate(df[col]):
-        icon_val, bg_col = style_event(val)
-        df_display.at[i, col] = icon_val
-        if bg_col:
-            cell_colors[(i, col)] = bg_col
+# Apply formatting only to player columns
+df[player_columns] = df[player_columns].applymap(format_events)
 
-# Streamlit UI
-st.set_page_config(page_title="Oldham Athletic Season Events", layout="wide")
-st.title("Oldham Athletic 2025 Season — Match Events")
-st.write("Colour-coded match events with icons:")
+# Function to style cells based on events
+def highlight_events(val):
+    if isinstance(val, str):
+        if "⚽" in val:
+            return "background-color: lightgreen; font-weight: bold;"
+        elif "🟨" in val:
+            return "background-color: yellow; font-weight: bold;"
+        elif "🟥" in val:
+            return "background-color: red; color: white; font-weight: bold;"
+        elif "🥅" in val:
+            return "background-color: lightcoral; font-weight: bold;"
+        elif "🔻" in val:
+            return "background-color: orange; font-weight: bold;"
+        elif "🔺" in val:
+            return "background-color: lightblue; font-weight: bold;"
+    return ""
 
-# Apply Streamlit Styler for table display
-df_display = df_display.astype(str)  # ✅ fix mixed-type Arrow error
+# Function to style based on player role
+def role_style(val):
+    if isinstance(val, str):
+        # Starter: contains events but no 🔺 (sub on)
+        if any(sym in val for sym in ["⚽", "🟨", "🟥", "🥅", "🔻"]) and "🔺" not in val:
+            return "font-weight: bold; color: black;"
+        # Sub: has 🔺
+        elif "🔺" in val:
+            return "font-style: italic; color: dimgray;"
+        # Unused: empty or no events
+        elif val.strip() == "":
+            return "color: lightgray;"
+    return ""
 
-# Apply Streamlit Styler for table display
-def highlight_cells(val, row_idx, col_name):
-    return f"background-color: #{cell_colors.get((row_idx, col_name), '')}" if (row_idx, col_name) in cell_colors else ""
+# Apply styling to dataframe
+styled_df = (
+    df.style
+    .applymap(highlight_events, subset=player_columns)
+    .applymap(role_style, subset=player_columns)
+)
 
-styled_df = df_display.style.apply(lambda col: [highlight_cells(v, i, col.name) for i, v in enumerate(col)], axis=0)
+st.title("Squad Grid with Events and Role-Based Styling")
 st.dataframe(styled_df, use_container_width=True)
 
-# Export to Excel with formatting
-def export_to_excel():
-    wb = openpyxl.Workbook()
+# Export to Excel
+if st.button("Export to Excel"):
+    from openpyxl import Workbook
+    from openpyxl.styles import PatternFill, Font
+    import tempfile
+
+    wb = Workbook()
     ws = wb.active
 
-    # Write headers
-    for j, col in enumerate(df_display.columns, start=1):
-        ws.cell(row=1, column=j, value=col)
+    for r_idx, row in enumerate(df.itertuples(index=False), 1):
+        for c_idx, value in enumerate(row, 1):
+            cell = ws.cell(row=r_idx, column=c_idx, value=value)
 
-    # Write data with colour fills
-    for i in range(len(df_display)):
-        for j, col in enumerate(df_display.columns, start=1):
-            cell_value = df_display.iloc[i, j-1]
-            ws.cell(row=i+2, column=j, value=cell_value)
-            if (i, col) in cell_colors:
-                fill = PatternFill(start_color=cell_colors[(i, col)], end_color=cell_colors[(i, col)], fill_type="solid")
-                ws.cell(row=i+2, column=j).fill = fill
+            # Apply event background in Excel
+            if isinstance(value, str):
+                if "⚽" in value:
+                    cell.fill = PatternFill(start_color="90EE90", fill_type="solid")
+                elif "🟨" in value:
+                    cell.fill = PatternFill(start_color="FFFF00", fill_type="solid")
+                elif "🟥" in value:
+                    cell.fill = PatternFill(start_color="FF0000", fill_type="solid")
+                elif "🥅" in value:
+                    cell.fill = PatternFill(start_color="F08080", fill_type="solid")
+                elif "🔻" in value:
+                    cell.fill = PatternFill(start_color="FFA500", fill_type="solid")
+                elif "🔺" in value:
+                    cell.fill = PatternFill(start_color="ADD8E6", fill_type="solid")
 
-    file_path = "oldham_events.xlsx"
-    wb.save(file_path)
-    return file_path
-
-# Download button
-excel_file = export_to_excel()
-with open(excel_file, "rb") as f:
-    st.download_button("📥 Download Excel with Colours", f, file_name="oldham_events.xlsx")
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+        wb.save(tmp.name)
+        st.download_button(
+            label="Download Excel file",
+            data=open(tmp.name, "rb").read(),
+            file_name="squad_grid.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
