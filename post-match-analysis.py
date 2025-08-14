@@ -56,6 +56,9 @@ with tab2:
         # Flip away team x coords
         away_mask = match_positions["team_name"] == away_team_name
         match_positions.loc[away_mask, "average_x"] = 120 - match_positions.loc[away_mask, "average_x"]
+        
+        # Flip all y coords so pitch displays correctly (bottom to top)
+        match_positions["average_y"] = 80 - match_positions["average_y"]
 
         # Create pitch
         pitch = Pitch(pitch_type='statsbomb', line_color='black', pitch_color='white')
