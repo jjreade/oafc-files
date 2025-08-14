@@ -61,38 +61,38 @@ with tab2:
     unplayed = df_filtered[df_filtered[["goals1", "goals2"]].isna().any(axis=1)]
 
     # --- Actual table ---
-if played.empty:
-    actual_points = pd.DataFrame(columns=["team", "points"])
-else:
-    actual_points_t1 = (
-        played.groupby("team1")
-        .apply(lambda x: (3*(x["goals1"] > x["goals2"]) + 1*(x["goals1"] == x["goals2"])).sum())
-        .rename("points_home")
-        .reset_index()
-    )
-
-    actual_points_t2 = (
-        played.groupby("team2")
-        .apply(lambda x: (3*(x["goals2"] > x["goals1"]) + 1*(x["goals2"] == x["goals1"])).sum())
-        .rename("points_away")
-        .reset_index()
-    )
-
-    actual_points = pd.merge(actual_points_t1, actual_points_t2, left_on="team1", right_on="team2", how="outer")
-    actual_points["team"] = actual_points["team1"].combine_first(actual_points["team2"])
-    actual_points["points"] = actual_points["points_home"].fillna(0) + actual_points["points_away"].fillna(0)
-    actual_points = actual_points[["team", "points"]]
-
-    actual_gd_t1 = played.groupby("team1").apply(lambda x: (x["goals1"] - x["goals2"]).sum()).reset_index(name="gd_home")
-    actual_gd_t2 = played.groupby("team2").apply(lambda x: (x["goals2"] - x["goals1"]).sum()).reset_index(name="gd_away")
-    actual_gd = pd.merge(actual_gd_t1, actual_gd_t2, left_on="team1", right_on="team2", how="outer")
-    actual_gd["team"] = actual_gd["team1"].combine_first(actual_gd["team2"])
-    actual_gd["gd"] = actual_gd["gd_home"].fillna(0) + actual_gd["gd_away"].fillna(0)
-    actual_gd = actual_gd[["team", "gd"]]
-
-    actual_table = pd.merge(actual_points, actual_gd, on="team").fillna(0)
-    actual_table = actual_table.sort_values(by=["points", "gd"], ascending=False).reset_index(drop=True)
-    actual_table.index = actual_table.index + 1
+  if played.empty:
+      actual_points = pd.DataFrame(columns=["team", "points"])
+  else:
+      actual_points_t1 = (
+          played.groupby("team1")
+          .apply(lambda x: (3*(x["goals1"] > x["goals2"]) + 1*(x["goals1"] == x["goals2"])).sum())
+          .rename("points_home")
+          .reset_index()
+      )
+  
+      actual_points_t2 = (
+          played.groupby("team2")
+          .apply(lambda x: (3*(x["goals2"] > x["goals1"]) + 1*(x["goals2"] == x["goals1"])).sum())
+          .rename("points_away")
+          .reset_index()
+      )
+  
+      actual_points = pd.merge(actual_points_t1, actual_points_t2, left_on="team1", right_on="team2", how="outer")
+      actual_points["team"] = actual_points["team1"].combine_first(actual_points["team2"])
+      actual_points["points"] = actual_points["points_home"].fillna(0) + actual_points["points_away"].fillna(0)
+      actual_points = actual_points[["team", "points"]]
+  
+      actual_gd_t1 = played.groupby("team1").apply(lambda x: (x["goals1"] - x["goals2"]).sum()).reset_index(name="gd_home")
+      actual_gd_t2 = played.groupby("team2").apply(lambda x: (x["goals2"] - x["goals1"]).sum()).reset_index(name="gd_away")
+      actual_gd = pd.merge(actual_gd_t1, actual_gd_t2, left_on="team1", right_on="team2", how="outer")
+      actual_gd["team"] = actual_gd["team1"].combine_first(actual_gd["team2"])
+      actual_gd["gd"] = actual_gd["gd_home"].fillna(0) + actual_gd["gd_away"].fillna(0)
+      actual_gd = actual_gd[["team", "gd"]]
+  
+      actual_table = pd.merge(actual_points, actual_gd, on="team").fillna(0)
+      actual_table = actual_table.sort_values(by=["points", "gd"], ascending=False).reset_index(drop=True)
+      actual_table.index = actual_table.index + 1
 
     st.markdown("**Actual Table (Played Matches So Far)**")
     st.dataframe(actual_table)
