@@ -32,18 +32,18 @@ def get_player_cols(df_: pd.DataFrame):
 
 player_cols = get_player_cols(df)
 
-# ---------- Regex to parse events (handles messy spacing) ----------
-EVENT_RE = re.compile(
-    r'(?P<sub_on>\bsub\s*\d*\s*on\s*(?P<sub_on_min>\d+)(?:\s*\d+)?\b)|'  # sub 2 on 68 2
-    r'(?P<off>\boff\s*(?P<off_min>\d+)\b)|'                               # off 61
-    r'(?P<og>\bog\s*(?P<og_min>\d+)\b)|'                                  # og 12
-    r'(?P<g>\bg\s*(?P<g_min>\d+)\b)|'                                     # g 62 / g62
-    r'(?P<y>\by\s*(?P<y_min>\d+)?\b)|'                                    # y / y 50
-    r'(?P<r>\br\s*(?P<r_min>\d+)?\b)|'                                    # r / r 90
-    r'(?P<uu>\buu\b)|'                                                    # uu
-    r'(?P<x>\bx\b)',                                                      # x
-    re.IGNORECASE
-)
+# ---------- Event patterns ----------
+EVENT_PATTERNS = [
+    (r'\bog\s*(\d+)', lambda m: f'🔴⚽ {m.group(1)}'),   # own goal
+    (r'\bpen\s*(\d+)', lambda m: f'🟢⚽ {m.group(1)}'),    # penalty goal
+    (r'\bg\s*(\d+)', lambda m: f'⚽ {m.group(1)}'),      # normal goal
+    (r'\by\s*(\d+)?', lambda m: f'🟨 {m.group(1)}' if m.group(1) else "🟨"), # yellow
+    (r'\br\s*(\d+)?', lambda m: f'🟥 {m.group(1)}' if m.group(1) else "🟥"), # red
+    (r'\bsub\s*\d*\s*on\s*(\d+)', lambda m: f'🔺 {m.group(1)}'),  # sub on
+    (r'(\d+)\s*off', lambda m: f'🔻 {m.group(1)}'),                # sub off
+    (r'\buu\b', lambda m: '🚫'),                                   # unused
+    (r'\bx\b', lambda m: '🟩'),                                    # start
+]
 
 # ---------- Base background colours for role/status ----------
 BG_START  = "#DFF0D8"  # light green
@@ -52,18 +52,19 @@ BG_SUB_OFF= "#FCF8E3"  # pale yellow
 BG_UNUSED = "#E6E6E6"  # light grey
 
 def format_cell(raw) -> tuple[str, str]:
+    """Return (display_text, background_colour) for a player's cell."""
     if raw is None:
         return "", ""
     s = str(raw).strip().lower()
     if not s or s == "nan":
         return "", ""
 
+    # Determine background
     unused   = bool(re.search(r'\buu\b', s))
-    sub_on_m = re.search(r'\bsub\s*\d*\s*on\s*(\d+)(?:\s*\d+)?', s)
-    off_m    = re.search(r'\boff\s*(\d+)\b', s)
+    sub_on_m = re.search(r'\bsub\s*\d*\s*on\s*(\d+)', s)
+    off_m    = re.search(r'(\d+)\s*off', s)
     started  = bool(re.search(r'\bx\b', s))
 
-    # Background precedence
     if unused:
         bg = BG_UNUSED
     elif sub_on_m:
@@ -75,27 +76,24 @@ def format_cell(raw) -> tuple[str, str]:
     else:
         bg = ""
 
-    # Build visible events in original order
+    # Build events in original order
     parts = []
-    for m in EVENT_RE.finditer(s):
-        gd = m.groupdict()
-        if gd["sub_on"]:
-            parts.append(f"🔺 {gd['sub_on_min']}")
-        elif gd["off"]:
-            parts.append(f"🔻 {gd['off_min']}")
-        elif gd["og"]:
-            parts.append(f"🔴⚽ {gd['og_min']}")
-        elif gd["g"]:
-            parts.append(f"⚽ {gd['g_min']}")
-        elif gd["y"]:
-            parts.append(f"🟨 {gd['y_min']}" if gd["y_min"] else "🟨")
-        elif gd["r"]:
-            parts.append(f"🟥 {gd['r_min']}" if gd["r_min"] else "🟥")
-        elif gd["uu"]:
-            parts = ["🚫"]  # unused overrides display
-        elif gd["x"]:
-            if not unused and not sub_on_m:
-                parts.insert(0, "🟩")
+    idx = 0
+    while idx < len(s):
+        match_found = False
+        for pattern, repl in EVENT_PATTERNS:
+            m = re.match(pattern, s[idx:], flags=re.IGNORECASE)
+            if m:
+                parts.append(repl(m))
+                idx += m.end()
+                match_found = True
+                break
+        if not match_found:
+            idx += 1
+
+    # Unused overrides display entirely
+    if unused:
+        parts = ["🚫"]
 
     return " ".join(parts).strip(), bg
 
@@ -127,6 +125,7 @@ legend_items = [
     "🔺 Sub on (minute)",
     "🔻 Sub off (minute)",
     "⚽ Goal (minute)",
+    "🟢⚽ Penalty Goal (minute)",
     "🔴⚽ Own Goal (minute)",
     "🟨 Yellow Card (minute)",
     "🟥 Red Card (minute)",
