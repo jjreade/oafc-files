@@ -61,12 +61,19 @@ with tab2:
     unplayed = df_filtered[df_filtered[["goals1", "goals2"]].isna().any(axis=1)]
 
     # --- Actual table ---
-    actual_points_t1 = played.groupby("team1").apply(
-        lambda x: (3*(x["goals1"] > x["goals2"]) + 1*(x["goals1"] == x["goals2"])).sum()
-    ).reset_index(name="points_home")
-    actual_points_t2 = played.groupby("team2").apply(
-        lambda x: (3*(x["goals2"] > x["goals1"]) + 1*(x["goals2"] == x["goals1"])).sum()
-    ).reset_index(name="points_away")
+    actual_points_t1 = (
+        played.groupby("team1")
+        .apply(lambda x: (3*(x["goals1"] > x["goals2"]) + 1*(x["goals1"] == x["goals2"])).sum())
+        .reset_index()
+        .rename(columns={0: "points_home"})
+    )
+    
+    actual_points_t2 = (
+        played.groupby("team2")
+        .apply(lambda x: (3*(x["goals2"] > x["goals1"]) + 1*(x["goals2"] == x["goals1"])).sum())
+        .reset_index()
+        .rename(columns={0: "points_away"})
+    )
     actual_points = pd.merge(actual_points_t1, actual_points_t2, left_on="team1", right_on="team2", how="outer")
     actual_points["team"] = actual_points["team1"].combine_first(actual_points["team2"])
     actual_points["points"] = actual_points["points_home"].fillna(0) + actual_points["points_away"].fillna(0)
