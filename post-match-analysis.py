@@ -35,7 +35,7 @@ with tab2:
 
     match_positions = player_positions_df[
         player_positions_df["match_id"] == selected_match_id
-    ].copy()  # copy so we can safely modify
+    ].copy()
 
     match_passes = pass_network_df[
         pass_network_df["match_id"] == selected_match_id
@@ -45,26 +45,23 @@ with tab2:
         st.warning("No passing network data available for this match.")
     else:
         touch_scale = 20
-        team_colors = ["skyblue", "lightcoral"]  # Home / Away
+        team_colors = ["skyblue", "lightcoral"]
 
-        # Get home and away teams from matches_df
         home_team_name = matches_df.loc[
             matches_df["match_id"] == selected_match_id, "home_team.home_team_name"
         ].values[0]
         away_team_name = [t for t in match_positions["team_name"].unique() if t != home_team_name][0]
 
-        # Flip away team coordinates horizontally
         away_mask = match_positions["team_name"] == away_team_name
         match_positions.loc[away_mask, "average_x"] = 120 - match_positions.loc[away_mask, "average_x"]
 
         pitch = Pitch(pitch_type='statsbomb', line_color='black', pitch_color='white')
         fig, ax = pitch.draw(figsize=(10, 7))
 
-        # Plot each team separately
+        # Draw each team
         for i, team in enumerate([home_team_name, away_team_name]):
             team_positions = match_positions[match_positions["team_name"] == team]
 
-            # Plot player circles sized by touches
             pitch.scatter(
                 team_positions["average_x"],
                 team_positions["average_y"],
@@ -72,7 +69,6 @@ with tab2:
                 c=team_colors[i], edgecolors="black", linewidth=1, ax=ax, zorder=2
             )
 
-            # Labels
             for _, row in team_positions.iterrows():
                 pitch.annotate(
                     row["player_name"],
@@ -80,7 +76,7 @@ with tab2:
                     va="center", ha="center", fontsize=8, ax=ax, zorder=3
                 )
 
-            # Pass lines (only within the same team)
+            # Pass lines (within same team)
             team_passes = match_passes[
                 match_passes["passer"].isin(team_positions["player_name"])
             ]
@@ -101,3 +97,22 @@ with tab2:
                     )
 
         st.pyplot(fig)
+
+        # ---- NEW: Show players with most unique passing connections ----
+        st.subheader("Players with Most Passing Connections")
+
+        connections_df = match_passes.groupby("passer")["receiver"].nunique().reset_index()
+        connections_df.columns = ["player_name", "unique_connections"]
+
+        # Merge team names
+        connections_df = connections_df.merge(
+            match_positions[["player_name", "team_name"]],
+            on="player_name",
+            how="left"
+        )
+
+        for team in [home_team_name, away_team_name]:
+            team_df = connections_df[connections_df["team_name"] == team] \
+                .sort_values("unique_connections", ascending=False)
+            st.markdown(f"**{team}**")
+            st.dataframe(team_df, hide_index=True)
