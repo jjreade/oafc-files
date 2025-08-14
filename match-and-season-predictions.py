@@ -93,9 +93,9 @@ with tab2:
         actual_table = pd.merge(actual_points, actual_gd, on="team").fillna(0)
         actual_table = actual_table.sort_values(by=["points", "gd"], ascending=False).reset_index(drop=True)
         actual_table.index = actual_table.index + 1
-
-    st.markdown("**Actual Table (Played Matches So Far)**")
-    st.dataframe(actual_table)
+    
+        st.markdown("**Actual Table (Played Matches So Far)**")
+        st.dataframe(actual_table)
 
     # --- Predicted table (full season) ---
     pred_points_t1 = df_filtered.groupby("team1").apply(lambda x: (3 * x["forcPH"] + 1 * x["forcPD"]).sum()).reset_index(name="exp_points_home")
