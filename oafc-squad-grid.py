@@ -1,121 +1,211 @@
 import re
 import pandas as pd
 import streamlit as st
-from io import BytesIO
+import glob
+import os
 
-# --------------------------
-# Event parser function
-# --------------------------
-def parse_events(event_str):
-    if not isinstance(event_str, str) or not event_str.strip():
-        return "", None  # No events
+# Detect all available squad-grid files
+files = glob.glob("squad-grid-*.csv")
+years = sorted([os.path.splitext(os.path.basename(f))[0].split("-")[-1] for f in files], reverse=True)
 
-    event_map = {
-        'start': {'pattern': r'^x(?:\s+\d+)?$', 'emoji': '🟩', 'bgcolor': '#c6efce'},
-        'sub_on': {'pattern': r'^sub$', 'emoji': '🟢', 'bgcolor': '#d9ead3'},
-        'sub_off': {'pattern': r'^off$', 'emoji': '🔻', 'bgcolor': '#fff2cc'},
-        'goal': {'pattern': r'^g$', 'emoji': '⚽'},
-        'pen_goal': {'pattern': r'^pen$', 'emoji': '🟢⚽'},
-        'own_goal': {'pattern': r'^og$', 'emoji': '🔴⚽'},
-        'yellow': {'pattern': r'^y$', 'emoji': '🟨'},
-        'red': {'pattern': r'^r$', 'emoji': '🟥'},
-    }
+# Let the user choose the year
+selected_year = st.selectbox("Select season year", years)
 
-    tokens = event_str.strip().split()
-    parsed_tokens = []
-    bgcolor = None
+# Load the chosen CSV
+file_path = f"squad-grid-{selected_year}.csv"
+
+st.set_page_config(page_title=f"Oldham Athletic Squad Grid (season beginning {selected_year})", layout="wide")
+
+# ---------- Load data ----------
+df = pd.read_csv(file_path)
+
+# ---------- Identify player columns (skip metadata/referee/etc.) ----------
+META_COLS_KNOWN = {
+    "unnamed: 0","date","opposition","goals1","goals2","venue","kickoff",
+    "attendance","awayatt","post.position","opp.post.position","referee",
+    "result","notes","competition","round"
+}
+def get_player_cols(df_: pd.DataFrame):
+    meta_present = {c for c in df_.columns if c.lower() in META_COLS_KNOWN}
+    with_space = [c for c in df_.columns if (" " in c and c not in meta_present)]
+    return with_space if with_space else [c for c in df_.columns if c not in meta_present]
+
+player_cols = get_player_cols(df)
+
+# ---------- Event patterns ----------
+EVENT_PATTERNS = [
+    (r'\bog\s*(\d+)', lambda m: f'🔴⚽ {m.group(1)}'),   # own goal
+    (r'\bpen\s*(\d+)', lambda m: f'🟢⚽ {m.group(1)}'),    # penalty goal
+    (r'\bg\s*(\d+)', lambda m: f'⚽ {m.group(1)}'),      # normal goal
+    (r'\by\s*(\d+)?', lambda m: f'🟨 {m.group(1)}' if m.group(1) else "🟨"), # yellow
+    (r'\br\s*(\d+)?', lambda m: f'🟥 {m.group(1)}' if m.group(1) else "🟥"), # red
+    (r'\bsub\s*\d*\s*on\s*(\d+)', lambda m: f'🔺 {m.group(1)}'),  # sub on
+    (r'(\d+)\s*off', lambda m: f'🔻 {m.group(1)}'),                # sub off
+    (r'\buu\b', lambda m: '🚫'),                                   # unused
+    (r'\bx\b', lambda m: '🟩'),                                    # start
+]
+
+# ---------- Base background colours for role/status ----------
+BG_START  = "#DFF0D8"  # light green
+BG_SUB_ON = "#D9EDF7"  # light blue
+BG_SUB_OFF= "#FCF8E3"  # pale yellow
+BG_UNUSED = "#E6E6E6"  # light grey
+
+def format_cell(raw) -> tuple[str, str]:
+    """Return (display_text, background_colour) for a player's cell."""
+    if raw is None:
+        return "", ""
+    s = str(raw).strip().lower()
+    if not s or s == "nan":
+        return "", ""
+
+    # Determine background
+    unused   = bool(re.search(r'\buu\b', s))
+    sub_on_m = re.search(r'\bsub\s*\d*\s*on\s*(\d+)', s)
+    off_m    = re.search(r'(\d+)\s*off', s)
+    started  = bool(re.search(r'\bx\b', s))
+
+    if unused:
+        bg = BG_UNUSED
+    elif sub_on_m:
+        bg = BG_SUB_ON
+    elif off_m:
+        bg = BG_SUB_OFF
+    elif started:
+        bg = BG_START
+    else:
+        bg = ""
+
+    # Tokenise and parse events in order
+    tokens = s.split()
+    parts = []
     i = 0
-
     while i < len(tokens):
-        token = tokens[i]
-        matched = False
+        t = tokens[i]
 
-        for ev, data in event_map.items():
-            if re.match(data['pattern'], token, flags=re.IGNORECASE):
-                # Look ahead to see if next token is a number (minute)
-                if i + 1 < len(tokens) and tokens[i + 1].isdigit():
-                    parsed_tokens.append(f"{data['emoji']} {tokens[i + 1]}")
-                    i += 2
-                else:
-                    parsed_tokens.append(data['emoji'])
-                    i += 1
-
-                if 'bgcolor' in data and bgcolor is None:
-                    bgcolor = data['bgcolor']
-                matched = True
-                break
-
-        if not matched:
-            # Standalone number = goal minute (no preceding g/pen/og)
-            if token.isdigit():
-                parsed_tokens.append(f"⚽ {token}")
+        if t == "x":
+            parts.append("🟩")
+            i += 1
+        elif t == "sub" and i + 2 < len(tokens) and tokens[i+2] == "on":
+            parts.append(f"🔺 {tokens[i+1]}")
+            i += 3
+        elif re.fullmatch(r"\d+", t) and i + 1 < len(tokens) and tokens[i+1] == "off":
+            parts.append(f"🔻 {t}")
+            i += 2
+        elif t == "g" and i + 1 < len(tokens):
+            parts.append(f"⚽ {tokens[i+1]}")
+            i += 2
+        elif t == "pen" and i + 1 < len(tokens):
+            parts.append(f"🟢⚽ {tokens[i+1]}")
+            i += 2
+        elif t == "og" and i + 1 < len(tokens):
+            parts.append(f"🔴⚽ {tokens[i+1]}")
+            i += 2
+        elif t == "y":
+            if i + 1 < len(tokens) and tokens[i+1].isdigit():
+                parts.append(f"🟨 {tokens[i+1]}")
+                i += 2
             else:
-                parsed_tokens.append(token)
+                parts.append("🟨")
+                i += 1
+        elif t == "r":
+            if i + 1 < len(tokens) and tokens[i+1].isdigit():
+                parts.append(f"🟥 {tokens[i+1]}")
+                i += 2
+            else:
+                parts.append("🟥")
+                i += 1
+        elif t == "uu":
+            parts.append("🚫")
+            i += 1
+        elif re.fullmatch(r"\d+", t):
+            # A bare minute after another event type = goal
+            parts.append(f"⚽ {t}")
+            i += 1
+        else:
             i += 1
 
-    return " ".join(parsed_tokens), bgcolor
+    # Unused overrides display entirely
+    if unused:
+        parts = ["🚫"]
 
+    return " ".join(parts).strip(), bg
 
-# --------------------------
-# Streamlit UI
-# --------------------------
-st.title("Matchday Squad Sheet")
+# ---------- Build display DF + background map ----------
+df_display = df.copy()
+bg_map: dict[tuple[int, str], str] = {}
 
-uploaded_file = st.file_uploader("Upload squad CSV", type=["csv"])
-if uploaded_file:
-    df = pd.read_csv(uploaded_file)
+for col in player_cols:
+    for i, val in df[col].items():
+        disp, bg = format_cell(val)
+        df_display.at[i, col] = disp
+        if bg:
+            bg_map[(i, col)] = bg
 
-    formatted_rows = []
-    bg_colors = []
+df_display = df_display.astype(str)
 
-    for idx, row in df.iterrows():
-        events, color = parse_events(row.get("Events", ""))
-        formatted_rows.append(events)
-        bg_colors.append(color)
+# ---------- Style for Streamlit ----------
+def col_bg_styler(col: pd.Series):
+    return [f"background-color: {bg_map.get((i, col.name), '')}" for i in col.index]
 
-    df["Events (Formatted)"] = formatted_rows
-    df["BG Color"] = bg_colors
+styled = df_display.style.apply(col_bg_styler, axis=0, subset=player_cols)
 
-    st.write("### Squad")
-    for idx, r in df.iterrows():
-        bg = r["BG Color"] if pd.notnull(r["BG Color"]) else "white"
-        st.markdown(
-            f"<div style='background-color:{bg};padding:4px;border-radius:4px'>"
-            f"{r['Name']} — {r['Events (Formatted)']}</div>",
-            unsafe_allow_html=True
-        )
+st.title("Oldham Athletic — Season Grid (emojis + role backgrounds)")
+st.dataframe(styled, use_container_width=True)
 
-    def to_excel(df):
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            df.to_excel(writer, sheet_name="Squad", index=False)
-            workbook = writer.book
-            worksheet = writer.sheets["Squad"]
+# ---------- Legend ----------
+legend_items = [
+    "🟩 Start",
+    "🔺 Sub on (minute)",
+    "🔻 Sub off (minute)",
+    "⚽ Goal (minute)",
+    "🟢⚽ Penalty Goal (minute)",
+    "🔴⚽ Own Goal (minute)",
+    "🟨 Yellow Card (minute)",
+    "🟥 Red Card (minute)",
+    "🚫 Unused Sub"
+]
+legend_text = "\n".join(legend_items)
+st.markdown("### Legend")
+st.markdown("```\n" + legend_text + "\n```")
 
-            for idx, color in enumerate(df["BG Color"], start=2):
-                if pd.notnull(color):
-                    fmt = workbook.add_format({'bg_color': color})
-                    worksheet.set_row(idx-1, None, fmt)
+# ---------- Excel export ----------
+def export_excel_with_bg_and_legend(df_disp: pd.DataFrame, bg_lookup: dict, filename: str = "squad_grid.xlsx"):
+    from openpyxl import Workbook
+    from openpyxl.styles import PatternFill
+    wb = Workbook()
+    ws = wb.active
 
-        output.seek(0)
-        return output
+    # headers
+    for j, col in enumerate(df_disp.columns, start=1):
+        ws.cell(row=1, column=j, value=col)
 
+    # body
+    for i in range(len(df_disp)):
+        for j, col in enumerate(df_disp.columns, start=1):
+            val = df_disp.iloc[i, j-1]
+            cell = ws.cell(row=i+2, column=j, value=val)
+            bg = bg_lookup.get((i, col))
+            if bg:
+                hex6 = bg.replace("#", "")
+                cell.fill = PatternFill(start_color=hex6, end_color=hex6, fill_type="solid")
+
+    # legend after table
+    legend_start_row = len(df_disp) + 4
+    ws.cell(row=legend_start_row, column=1, value="Legend:")
+    for idx, item in enumerate(legend_items, start=legend_start_row + 1):
+        ws.cell(row=idx, column=1, value=item)
+
+    return wb
+
+if st.button("📥 Export to Excel"):
+    from io import BytesIO
+    bio = BytesIO()
+    wb = export_excel_with_bg_and_legend(df_display, bg_map)
+    wb.save(bio)
     st.download_button(
-        label="Download Excel",
-        data=to_excel(df),
-        file_name="squad.xlsx",
+        "Download .xlsx",
+        data=bio.getvalue(),
+        file_name="squad_grid.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
-    st.write("### Legend")
-    legend = {
-        "🟩": "Start",
-        "🟢": "Sub on",
-        "🔻": "Sub off",
-        "⚽": "Goal",
-        "🟢⚽": "Penalty goal",
-        "🔴⚽": "Own goal",
-        "🟨": "Yellow card",
-        "🟥": "Red card"
-    }
-    st.table(pd.DataFrame(list(legend.items()), columns=["Symbol", "Meaning"]))
