@@ -47,14 +47,17 @@ with tab2:
         touch_scale = 20
         team_colors = ["skyblue", "lightcoral"]
 
+        # Home / Away from matches_df
         home_team_name = matches_df.loc[
             matches_df["match_id"] == selected_match_id, "home_team.home_team_name"
         ].values[0]
         away_team_name = [t for t in match_positions["team_name"].unique() if t != home_team_name][0]
 
+        # Flip away team x coords
         away_mask = match_positions["team_name"] == away_team_name
         match_positions.loc[away_mask, "average_x"] = 120 - match_positions.loc[away_mask, "average_x"]
 
+        # Create pitch
         pitch = Pitch(pitch_type='statsbomb', line_color='black', pitch_color='white')
         fig, ax = pitch.draw(figsize=(10, 7))
 
@@ -76,7 +79,7 @@ with tab2:
                     va="center", ha="center", fontsize=8, ax=ax, zorder=3
                 )
 
-            # Pass lines (within same team)
+            # Pass lines within same team
             team_passes = match_passes[
                 match_passes["passer"].isin(team_positions["player_name"])
             ]
@@ -98,21 +101,35 @@ with tab2:
 
         st.pyplot(fig)
 
-        # ---- NEW: Show players with most unique passing connections ----
+        # ---- Players with most unique connections ----
         st.subheader("Players with Most Passing Connections")
 
         connections_df = match_passes.groupby("passer")["receiver"].nunique().reset_index()
         connections_df.columns = ["player_name", "unique_connections"]
-
-        # Merge team names
         connections_df = connections_df.merge(
             match_positions[["player_name", "team_name"]],
             on="player_name",
             how="left"
         )
 
+        # ---- Player combinations with most passes ----
+        st.subheader("Top Passing Combinations")
+
+        combinations_df = match_passes[["passer", "receiver", "pass_count"]].copy()
+        combinations_df = combinations_df.merge(
+            match_positions[["player_name", "team_name"]],
+            left_on="passer", right_on="player_name", how="left"
+        ).drop(columns=["player_name"])
+        combinations_df.rename(columns={"team_name": "team"}, inplace=True)
+
         for team in [home_team_name, away_team_name]:
-            team_df = connections_df[connections_df["team_name"] == team] \
-                .sort_values("unique_connections", ascending=False)
             st.markdown(f"**{team}**")
-            st.dataframe(team_df, hide_index=True)
+            team_conn = connections_df[connections_df["team_name"] == team] \
+                .sort_values("unique_connections", ascending=False)
+            st.markdown("*Players with most unique passing connections*")
+            st.dataframe(team_conn, hide_index=True)
+
+            team_combos = combinations_df[combinations_df["team"] == team] \
+                .sort_values("pass_count", ascending=False)
+            st.markdown("*Most frequent passing combinations*")
+            st.dataframe(team_combos, hide_index=True)
