@@ -5,3 +5,5 @@ oauth2client
 numpy
 matplotlib
 openpyxl
+mplsoccer
+networkx
