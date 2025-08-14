@@ -1,11 +1,23 @@
 import re
 import pandas as pd
 import streamlit as st
+import glob
+import os
 
-st.set_page_config(page_title="Oldham Athletic Squad Grid", layout="wide")
+# Detect all available squad-grid files
+files = glob.glob("squad-grid-*.csv")
+years = sorted([os.path.splitext(os.path.basename(f))[0].split("-")[-1] for f in files], reverse=True)
+
+# Let the user choose the year
+selected_year = st.selectbox("Select season year", years)
+
+# Load the chosen CSV
+file_path = f"squad-grid-{selected_year}.csv"
+
+st.set_page_config(page_title=f"Oldham Athletic Squad Grid (season beginning {selected_year})", layout="wide")
 
 # ---------- Load data ----------
-df = pd.read_csv("squad-grid-2025.csv")
+df = pd.read_csv(file_path)
 
 # ---------- Identify player columns (skip metadata/referee/etc.) ----------
 META_COLS_KNOWN = {
