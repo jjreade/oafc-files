@@ -19,7 +19,7 @@ if "match_date" in df.columns:
 df = df.rename(columns=lambda c: c.replace(".", "_"))
 
 # Identify score columns
-score_columns = [col for col in df.columns if col.startswith("cat_") or col.endswith("_score")]
+score_columns = [col for col in df.columns if col.startswith("cat_") or col.endswith("_score") or col.startswith("player_match_")]
 
 # Sidebar selections
 default_team = "Oldham Athletic"
